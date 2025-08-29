@@ -4,6 +4,15 @@ End-to-end medical appointments platform — patients book visits, doctors manag
 
 ---
 
+## 🧷 Repositories
+
+- **API:** https://github.com/Xenios7/Healthcare-Booking-Api  
+- **Web:** https://github.com/Xenios7/Healthcare-Booking-Frontend  
+
+> Looking for implementation details? See each repo’s README. This hub is the product page.
+
+---
+
 ## 🚀 Live Demo (Cloud-only)
 
 Everything runs in the cloud — **no local setup required**.
@@ -33,15 +42,6 @@ Everything runs in the cloud — **no local setup required**.
 - **Backend:** Spring Boot, PostgreSQL, JWT  
 - **Frontend:** React  
 - **Infra:** Koyeb (Web, API, DB)
-
----
-
-## 🧷 Repositories
-
-- **API:** https://github.com/Xenios7/Healthcare-Booking-Api  
-- **Web:** https://github.com/Xenios7/Healthcare-Booking-Frontend  
-
-> Looking for implementation details? See each repo’s README. This hub is the product page.
 
 ---
 
@@ -89,7 +89,7 @@ Export your diagram to `docs/architecture.png`.
 
 ### 🧩 ERD
 
-Export to `docs/erd.png`.
+Export to `docs/ERD_BookingAPI.png`.
 
 ![ERD](docs/erd.png)
 
