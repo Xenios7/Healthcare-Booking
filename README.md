@@ -4,49 +4,16 @@ End-to-end medical appointments platform — patients book visits, doctors manag
 
 ---
 
-## 🚀 Live Demo
+## 🚀 Live Demo (Cloud-only)
+
+Everything runs in the cloud — **no local setup required**.
 
 - **Web:** https://medicalbooking.koyeb.app/
 - **API:** https://medicalbooking-api.koyeb.app/ → Swagger at `/swagger-ui`
+- **Region/Platform:** Frankfurt (eu-central-1) on Koyeb
+- **Database:** Postgres v17 (`ep-cold-scene-a2ffs6hj.eu-central-1.pg.koyeb.app`)
 
----
-
-## ⚡ Quick Start (Local)
-
-```bash
-# 1) Copy environment
-cp .env.example .env
-
-# 2) Start everything
-docker compose up -d
-
-# 3) Open:
-# Web → http://localhost:3000
-# API → http://localhost:8080  (Swagger at /swagger-ui)
-```
-
----
-
-## 🔑 Environment Variables
-
-Create `.env` from `.env.example` and adjust as needed:
-
-```dotenv
-# Database
-POSTGRES_DB=app
-POSTGRES_USER=app
-POSTGRES_PASSWORD=app
-
-# Backend (Spring Boot)
-SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/app
-SPRING_DATASOURCE_USERNAME=app
-SPRING_DATASOURCE_PASSWORD=app
-SPRING_PROFILES_ACTIVE=prod
-JWT_SECRET=change-me-please
-
-# Frontend
-API_URL=http://localhost:8080
-```
+> ⚠️ Local development is **optional** and not needed for trying the app. This README is **cloud-first** because the frontend points to the cloud API.
 
 ---
 
@@ -57,15 +24,15 @@ API_URL=http://localhost:8080
 - 🗓️ Doctor availability & calendar view
 - 🔐 JWT authentication
 - 📜 OpenAPI/Swagger documentation
-- 🐳 One-command local run (Docker Compose)
+- 🌐 Cloud deployment on Koyeb (web + API + DB)
 
 ---
 
 ## 🧰 Tech Stack
 
 - **Backend:** Spring Boot, PostgreSQL, JWT  
-- **Frontend:** React (consumes `API_URL`)  
-- **Infra:** Docker Compose; Koyeb for production
+- **Frontend:** React  
+- **Infra:** Koyeb (Web, API, DB)
 
 ---
 
@@ -74,7 +41,7 @@ API_URL=http://localhost:8080
 - **API:** https://github.com/Xenios7/Healthcare-Booking-Api  
 - **Web:** https://github.com/Xenios7/Healthcare-Booking-Frontend  
 
-> Looking for implementation details? See each repo’s README. This hub is the product page + one-command run.
+> Looking for implementation details? See each repo’s README. This hub is the product page.
 
 ---
 
@@ -82,7 +49,7 @@ API_URL=http://localhost:8080
 
 Place your video under `docs/` and it will appear here.
 
-- **High quality (download / preview):** `docs/demo.mov`  
+- **High quality (download/preview):** `docs/demo.mov`  
 - **Best browser compatibility:** convert a copy to MP4 → `docs/demo.mp4`
 
 <!-- Inline player (works best with .mp4); GitHub may still render as a link -->
@@ -114,6 +81,8 @@ Export your diagram to `docs/architecture.png`.
 **Auth:** JWT (role-based endpoints)  
 **Deploy:** Koyeb (Frankfurt, eu-central-1)
 
+![Architecture](docs/architecture.png)
+
 ---
 
 ## 🗄️ Database
@@ -122,27 +91,133 @@ Export your diagram to `docs/architecture.png`.
 
 Export to `docs/erd.png`.
 
+![ERD](docs/erd.png)
+
+### 📋 Entities & Tables (baseline)
+
+> Replace/extend with your exact fields as implemented.
+
+#### `users`
+| field         | type         | notes                          |
+|---------------|--------------|--------------------------------|
+| id            | UUID (PK)    |                                |
+| email         | varchar(255) | unique                         |
+| password_hash | varchar(255) |                                |
+| role          | enum         | `PATIENT` `DOCTOR` `ADMIN`     |
+| created_at    | timestamptz  | default now()                  |
+| updated_at    | timestamptz  |                                |
+
+#### `patients`
+| field        | type                   | notes             |
+|--------------|------------------------|-------------------|
+| id           | UUID (PK/FK→users.id)  | one-to-one user   |
+| first_name   | varchar(100)           |                   |
+| last_name    | varchar(100)           |                   |
+| dob          | date                   |                   |
+| phone        | varchar(30)            |                   |
+| insurance_no | varchar(100)           | nullable          |
+
+#### `doctors`
+| field          | type                   | notes                 |
+|----------------|------------------------|-----------------------|
+| id             | UUID (PK/FK→users.id)  | one-to-one user       |
+| specialization | varchar(120)           |                       |
+| bio            | text                   | nullable              |
+| clinic_id      | UUID (FK→clinics.id)   | nullable              |
+
+#### `clinics`
+| field   | type           | notes |
+|---------|----------------|-------|
+| id      | UUID (PK)      |       |
+| name    | varchar(150)   |       |
+| address | text           |       |
+| phone   | varchar(30)    |       |
+
+#### `availability_slots`
+| field        | type                   | notes                                 |
+|--------------|------------------------|---------------------------------------|
+| id           | UUID (PK)              |                                       |
+| doctor_id    | UUID (FK→doctors.id)   |                                       |
+| start_time   | timestamptz            |                                       |
+| end_time     | timestamptz            |                                       |
+| is_recurring | boolean                | default false                         |
+| rrule        | varchar(255)           | RFC 5545 rule if recurring (optional) |
+
+#### `appointments`
+| field      | type                     | notes                                        |
+|------------|--------------------------|----------------------------------------------|
+| id         | UUID (PK)                |                                              |
+| patient_id | UUID (FK→patients.id)    |                                              |
+| doctor_id  | UUID (FK→doctors.id)     |                                              |
+| start_time | timestamptz              |                                              |
+| end_time   | timestamptz              |                                              |
+| status     | enum                     | `PENDING` `CONFIRMED` `CANCELLED` `COMPLETED`|
+| notes      | text                     | nullable                                     |
+| created_at | timestamptz              | default now()                                |
+
+#### `notifications` (optional)
+| field   | type                  | notes                         |
+|---------|-----------------------|-------------------------------|
+| id      | UUID (PK)             |                               |
+| user_id | UUID (FK→users.id)    |                               |
+| channel | enum                  | `EMAIL` `SMS` `PUSH`          |
+| type    | varchar(50)           | e.g., `APPT_CONFIRMED`        |
+| payload | jsonb                 |                               |
+| status  | enum                  | `QUEUED` `SENT` `FAILED`      |
+| sent_at | timestamptz           | nullable                      |
+
 ---
 
 ## 📚 API Docs
 
-- **Local Swagger UI:** `http://localhost:8080/swagger-ui`  
-- **OpenAPI JSON:** `http://localhost:8080/v3/api-docs`  
-- **Prod Swagger:** `https://medicalbooking-api.koyeb.app/swagger-ui`
+- **Prod Swagger:** `https://medicalbooking-api.koyeb.app/swagger-ui`  
+- **OpenAPI JSON:** `https://medicalbooking-api.koyeb.app/v3/api-docs`
+
+> 🧪 Local Swagger links are omitted because this project is cloud-first and the frontend targets the cloud API.
 
 ---
 
-## ☁️ Deployment
-
-### ☁️ Koyeb (Production)
+## ☁️ Deployment (Koyeb)
 
 - **Web:** `healthcare-booking-frontend` → https://medicalbooking.koyeb.app/  
-  - Env: `API_URL=https://medicalbooking-api.koyeb.app`
 - **API:** `healthcare-booking-api` → https://medicalbooking-api.koyeb.app/  
-  - Env: DB URL/creds, `SPRING_PROFILES_ACTIVE=prod`, `JWT_SECRET=…`
 - **Database:** Postgres v17 → `ep-cold-scene-a2ffs6hj.eu-central-1.pg.koyeb.app`
 
-### 🐳 Docker (Local)
+> 🔒 Make sure secrets (DB URL/creds, JWT secret, etc.) are stored in Koyeb and **not** committed.
 
-- `docker compose up -d` brings up Web, API, DB.  
-- Ports: Web **3000**, API **8080**, Postgres **5432**.
+---
+
+## 🗂️ Project Structure (Hub)
+
+```
+.
+├─ docs/
+│  ├─ architecture.png
+│  ├─ erd.png
+│  ├─ demo.mov        # optional (original)
+│  ├─ demo.mp4        # recommended for inline playback
+│  └─ screens/
+│     ├─ landing.png
+│     ├─ booking.png
+│     ├─ calendar.png
+│     └─ admin.png
+└─ README.md
+```
+
+---
+
+## 🔐 Security Notes
+
+- Never commit secrets or `.env` files  
+- Use a strong `JWT` secret in production; rotate periodically  
+- HTTPS/TLS handled by Koyeb (use the HTTPS URLs)
+
+---
+
+## ❓ FAQ
+
+- **Why isn’t there a local “docker compose up” here?**  
+  The app is **cloud-first** and the frontend points to the **cloud API**. You can use the live demo without any local setup.
+
+- **Can I still run locally later?**  
+  Yes — if you add local envs and point the frontend to a local API; that’s outside the scope of this README since the current code targets the cloud API.
